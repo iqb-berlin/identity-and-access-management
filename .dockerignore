@@ -1,0 +1,6 @@
+.idea/
+.git/
+.gitignore
+.vscode
+*Dockerfile*
+*docker-compose*

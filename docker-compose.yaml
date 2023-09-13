@@ -1,0 +1,70 @@
+services:
+  db:
+    image: postgres:14.8-bookworm
+    restart: always
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-q", "-d", "${POSTGRES_DB}", "-U", "${POSTGRES_USER}" ]
+      interval: 1s
+      retries: 120
+    volumes:
+      - keycloak_vol:/var/lib/postgresql/data
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    networks:
+      - application-network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:22.0
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # JAVA_OPTS_APPEND: -Dkeycloak.profile.feature.upload_scripts=enabled
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://db/${POSTGRES_DB}
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KC_HEALTH_ENABLED: 'true'
+      KC_METRICS_ENABLED: 'true'
+      KC_HTTP_ENABLED: 'true'
+      # KC_HOSTNAME: keycloak.localhost
+      # KC_HOSTNAME_PORT: 8080
+      # KC_HOSTNAME_URL: http://keycloak.localhost:8080
+      # KC_PROXY: reencrypt
+      KEYCLOAK_LOGLEVEL: ${KEYCLOAK_LOGLEVEL}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+    networks:
+      - application-network
+
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.5.0
+    #   ports:
+    #     - 4180:4180/tcp
+    #    volumes:
+    #      - ./config/oauth2-proxy/oauth2-proxy.cfg:/oauth2-proxy.cfg
+    restart: always
+    depends_on:
+      - keycloak
+    networks:
+      - application-network
+    deploy:
+      mode: global
+
+  whoami-service:
+    image: containous/whoami
+    networks:
+      - application-network
+
+volumes:
+  keycloak_vol:
+
+networks:
+  application-network:
+    name: app-net
+    external: true

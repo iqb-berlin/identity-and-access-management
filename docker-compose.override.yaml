@@ -1,0 +1,54 @@
+services:
+  db:
+    ports:
+      - "${POSTGRES_PORT}:5432"
+
+  keycloak:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.keycloak.entrypoints=web, traefik"
+      - "traefik.http.routers.keycloak.rule=Host(`keycloak.${SERVER_NAME}`)"
+      - "traefik.http.routers.keycloak.service=keycloak-identity-and-access-mangement@docker"
+      - "traefik.docker.network=app-net"
+    build:
+      context: apps/keycloak
+    command: [ 'start', '--hostname=keycloak.${SERVER_NAME} --hostname-strict=false' ]
+    #command: ['start', '--optimized']
+    #command: ["-b", "0.0.0.0", "-Dkeycloak.profile.feature.docker=enabled"]
+    environment:
+      KC_HOSTNAME_STRICT_HTTPS: 'false'
+      # ports:
+      # - "8180:8080"
+      # - "8787:8787" # debug port
+
+  oauth2-proxy:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.oauth2-proxy.entrypoints=web, traefik"
+      - "traefik.http.routers.oauth2-proxy.rule=Host(`whoami.${SERVER_NAME}`)"
+      - "traefik.http.routers.oauth2-proxy.service=oauth2-proxy"
+      - "traefik.http.services.oauth2-proxy.service.loadbalancer.server.port=4180"
+      - "traefik.docker.network=app-net"
+    command:
+      - --http-address
+      - 0.0.0.0:4180
+    expose:
+      - 4180
+    environment:
+      OAUTH2_PROXY_UPSTREAMS: http://whoami-service
+      OAUTH2_PROXY_PROVIDER_DISPLAY_NAME: Keycloak
+      OAUTH2_PROXY_PROVIDER: keycloak-oidc
+      OAUTH2_PROXY_OIDC_ISSUER_URL: http://keycloak.localhost/auth/realms/master
+      OAUTH2_PROXY_CLIENT_ID: who-am-i
+      OAUTH2_PROXY_CLIENT_SECRET: WLx08G8L7GD5RAeBT9GhPMDePN4iqmAr
+      OAUTH2_PROXY_PASS_ACCESS_TOKEN: true
+      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: true
+      OAUTH2_PROXY_EMAIL_DOMAINS: '*'
+      OAUTH2_PROXY_REDIRECT_URL: http://whoami.localhost/oauth2/callback
+      OAUTH2_PROXY_COOKIE_SECRET: cYW8ox+3ySQZ5M+92hsZhnUqiQqM5U7B
+      OAUTH2_PROXY_SKIP_OIDC_DISCOVERY: true
+      OAUTH2_PROXY_COOKIE_SECURE: false
+      OAUTH2_PROXY_LOGIN_URL: http://keycloak.localhost/auth/realms/master/protocol/openid-connect/auth
+      OAUTH2_PROXY_REDEEM_URL: http://keycloak.localhost/auth/realms/master/protocol/openid-connect/token
+      OAUTH2_PROXY_OIDC_JWKS_URL: http://keycloak.localhost/auth/realms/master/protocol/openid-connect/certs
+      OAUTH2_PROXY_COOKIE_CSRF_PER_REQUEST: true
