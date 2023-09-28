@@ -8,22 +8,26 @@ services:
       # - "traefik.http.routers.keycloak.middlewares=security-headers"
       - "traefik.http.routers.keycloak.service=keycloak-identity-and-access-mangement@docker"
       - "traefik.docker.network=app-net"
-    command: [ 'start', '--hostname=keycloak.${SERVER_NAME} --proxy=edge' ]
+    command: [ 'start', '--proxy=edge' ]
     #command: ['start', '--optimized']
     #command: ["-b", "0.0.0.0", "-Dkeycloak.profile.feature.docker=enabled"]
+    environment:
+      KEYCLOAK_LOGLEVEL: DEBUG
+      KEYCLOAK_EXTRA_ARGS_PREPENDED: "--spi-login-protocol-openid-connect-legacy-logout-redirect-uri=true"
 
   oauth2-proxy:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.oauth.entrypoints=websecure"
       - "traefik.http.routers.oauth.tls=true"
-      - "traefik.http.routers.oauth.rule=Host(`whoami.${SERVER_NAME}`, `oauth.${SERVER_NAME}`) && PathPrefix(`/oauth2/`)"
+      - "traefik.http.routers.oauth.rule=Host(`whoami.${SERVER_NAME}`)"
+      #- "traefik.http.routers.oauth.rule=Host(`whoami.${SERVER_NAME}`, `oauth.${SERVER_NAME}`) && PathPrefix(`/oauth2/`)"
       - "traefik.http.routers.oauth.middlewares=auth-headers"
       #- "traefik.http.routers.oauth.service=keycloak-identity-and-access-mangement@docker"
       #- "traefik.http.routers.oauth.service=oauth2-proxy-identity-and-access-mangement@docker"
-      - "traefik.http.routers.oauth.tls.certResolver=default"
-      - "traefik.http.routers.oauth.tls.domains.main=${SERVER_NAME}"
-      - "traefik.http.routers.oauth.tls.domains.main.sans=*.${SERVER_NAME}"
+      #- "traefik.http.routers.oauth.tls.certResolver=default"
+      #- "traefik.http.routers.oauth.tls.domains.main=${SERVER_NAME}"
+      #- "traefik.http.routers.oauth.tls.domains.main.sans=*.${SERVER_NAME}"
       #- "traefik.http.services.oauth.service.loadbalancer.server.port=4180"
       - "traefik.http.middlewares.auth-headers.headers.sslRedirect=true"
       - "traefik.http.middlewares.auth-headers.headers.stsSeconds=315360000"
@@ -36,57 +40,57 @@ services:
       - "traefik.http.middlewares.auth-headers.headers.frameDeny=true"
       - "traefik.docker.network=app-net"
     command:
+      - --provider=keycloak-oidc
+      - --client-id=who-am-i
+      - --client-secret=3igIiQMuWvb5QzpvWUwhPFIfIrMqgvzL
+      - --redirect-url=https://whoami.localhost/oauth2/callback
+      - --skip-oidc-discovery=true
+      #- --insecure-oidc-skip-issuer-verification=true
+      - --oidc-issuer-url=https://keycloak.localhost/realms/iqb
+      - --login-url=https://keycloak.localhost/realms/iqb/protocol/openid-connect/auth
+      - --redeem-url=http://keycloak:8080/realms/iqb/protocol/openid-connect/token
+      - --oidc-jwks-url=http://keycloak:8080/realms/iqb/protocol/openid-connect/certs
+      - --email-domain=iqb.hu-berlin.de
+      - --insecure-oidc-allow-unverified-email=true
+      - --scope=openid
+      #- --pass-access-token=true
+      - --skip-provider-button=true
+      #- --cookie-csrf-per-request=true
+      #- --skip-jwt-bearer-tokens=true
+      #- --allowed-role=<realm role name> // Optional, required realm role
+      #- --allowed-role=<client id>:<client role name> // Optional, required client role
+      #- --allowed-group=</group name> // Optional, requires group client scope
+      - --code-challenge-method=S256
+      - --upstream=http://whoami-service
+      - --cookie-secret=X1vMoWiAKwYXxBsdh4nALoRmV9SmGzkYg_jte9088GQ=
+      - --cookie-secure=true
+      - --reverse-proxy=true
+      - --errors-to-info-log=true
       - --http-address
       - 0.0.0.0:4180
-      - --reverse-proxy
-      - --standard-logging
-      - --auth-logging
-      - --request-logging
-      - --insecure-oidc-allow-unverified-email=true
     expose:
       - 4180
-    environment:
-      OAUTH2_PROXY_UPSTREAMS: http://whoami-service
-      OAUTH2_PROXY_PROVIDER_DISPLAY_NAME: Keycloak
-      OAUTH2_PROXY_PROVIDER: keycloak-oidc
-      OAUTH2_PROXY_OIDC_ISSUER_URL: https://keycloak.localhost/realms/master
-      #OAUTH2_PROXY_OIDC_ISSUER_URL: https://keycloak.localhost/realms/IQB
-      OAUTH2_PROXY_CLIENT_ID: who-am-i
-      OAUTH2_PROXY_CLIENT_SECRET: t6bRMEul0OXXpayQCIBkDAny5gg6vwCp
-      OAUTH2_PROXY_PASS_ACCESS_TOKEN: true
-      OAUTH2_PROXY_SKIP_PROVIDER_BUTTON: true
-      OAUTH2_PROXY_EMAIL_DOMAINS: '*'
-      OAUTH2_PROXY_REDIRECT_URL: https://whoami.localhost/oauth2/callback
-      OAUTH2_PROXY_COOKIE_SECRET: cYW8ox+3ySQZ5M+92hsZhnUqiQqM5U7B
-      OAUTH2_PROXY_SKIP_OIDC_DISCOVERY: true
-      OAUTH2_PROXY_COOKIE_SECURE: false
-      #OAUTH2_PROXY_COOKIE_SECURE: true
-      OAUTH2_PROXY_LOGIN_URL: https://keycloak.localhost/realms/master/protocol/openid-connect/auth
-      #OAUTH2_PROXY_LOGIN_URL: https://keycloak.localhost/realms/IQB/protocol/openid-connect/auth
-      OAUTH2_PROXY_REDEEM_URL: https://keycloak.localhost/realms/master/protocol/openid-connect/token
-      #OAUTH2_PROXY_REDEEM_URL: https://keycloak.localhost/realms/IQB/protocol/openid-connect/token
-      OAUTH2_PROXY_OIDC_JWKS_URL: https://keycloak.localhost/realms/master/protocol/openid-connect/certs
-      #OAUTH2_PROXY_OIDC_JWKS_URL: https://keycloak.localhost/realms/IQB/protocol/openid-connect/certs
-      OAUTH2_PROXY_COOKIE_CSRF_PER_REQUEST: true
 
   whoami-service:
     labels:
-      - "traefik.enable=true"
+      - "traefik.enable=false"
       - "traefik.http.routers.whoami-service.entrypoints=websecure"
       - "traefik.http.routers.whoami-service.tls=true"
       - "traefik.http.routers.whoami-service.rule=Host(`whoami.${SERVER_NAME}`)"
       - "traefik.http.routers.whoami-service.middlewares=oauth-auth, oauth-errors"
       #- "traefik.http.routers.whoami-service.middlewares=oauth-auth"
       - "traefik.http.routers.whoami-service.service=whoami-service-identity-and-access-mangement@docker"
-      - "traefik.http.routers.whoami-service.tls.certResolver=default"
-      - "traefik.http.routers.whoami-service.tls.domains.main=${SERVER_NAME}"
-      - "traefik.http.routers.whoami-service.tls.domains.main.sans=*.${SERVER_NAME}"
-      - "traefik.http.middlewares.oauth-auth.forwardAuth.address=http://whoami.${SERVER_NAME}/oauth2/auth"
+      #- "traefik.http.routers.whoami-service.tls.certResolver=default"
+      #- "traefik.http.routers.whoami-service.tls.domains.main=${SERVER_NAME}"
+      #- "traefik.http.routers.whoami-service.tls.domains.main.sans=*.${SERVER_NAME}"
+      - "traefik.http.middlewares.oauth-auth.forwardAuth.address=http://oauth.${SERVER_NAME}/oauth2/auth"
       - "traefik.http.middlewares.oauth-auth.forwardAuth.trustForwardHeader=true"
-      - "traefik.http.middlewares.oauth-auth.forwardAuth.authResponseHeadersRegex=^X-"
-      - "traefik.http.middlewares.oauth-auth.forwardAuth.authRequestHeaders=Accept,X-CustomHeader"
+      #- "traefik.http.middlewares.oauth-auth.forwardAuth.authResponseHeadersRegex=^X-"
+      #- "traefik.http.middlewares.oauth-auth.forwardAuth.authRequestHeaders=Accept,X-CustomHeader"
       - "traefik.http.middlewares.oauth-errors.errors.status=401-403"
-      - "traefik.http.middlewares.oauth-errors.errors.service=oauth2-proxy-identity-and-access-mangement@docker"
+      - "traefik.http.middlewares.oauth-errors.errors.service=keycloak-identity-and-access-mangement"
       #- "traefik.http.middlewares.oauth-errors.errors.service=maintenance-page@docker"
       - "traefik.http.middlewares.oauth-errors.errors.query=/oauth2/sign_in"
       #- "traefik.http.middlewares.oauth-errors.errors.query=/"
+      - "traefik.docker.network=app-net"
+
