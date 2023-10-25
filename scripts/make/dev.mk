@@ -62,14 +62,14 @@ dev-volumes-prune:
 ## Remove all unused data volumes
 # Be very careful, all data could be lost!!!
 dev-volumes-clean:
-	if test "$(shell docker volume ls -q -f name=identity-and-access-mangement)"; then\
-		docker volume rm $(shell docker volume ls -q -f name=identity-and-access-mangement);\
+	if test "$(shell docker volume ls -q -f name=identity-and-access-management)"; then\
+		docker volume rm $(shell docker volume ls -q -f name=identity-and-access-management);\
 	fi
 
 ## Remove all unused (not just dangling) images!
 dev-images-clean:
-	if test "$(shell docker images -q -f "reference=identity-and-access-mangement-*")";\
-		then docker rmi $(shell docker images -q -f "reference=identity-and-access-mangement-*");\
+	if test "$(shell docker images -q -f "reference=identity-and-access-management-*")";\
+		then docker rmi $(shell docker images -q -f "reference=identity-and-access-management-*");\
 	fi
 
 ## Remove all unused data volumes, images, containers, networks, and cache.

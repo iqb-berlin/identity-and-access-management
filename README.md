@@ -1,1 +1,1 @@
-# identity-and-access-mangement
+# identity-and-access-management
