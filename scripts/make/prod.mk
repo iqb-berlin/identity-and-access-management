@@ -85,6 +85,6 @@ iam-volumes-prune:
 
 ## Remove all unused (not just dangling) images!
 iam-images-clean:
-	if test "$(shell docker images -q -f "reference=identity-and-access-mangement-*")";\
-		then docker rmi $(shell docker images -q -f "reference=identity-and-access-mangement-*");\
+	if test "$(shell docker images -f "reference=identity-and-access-mangement-*")" -q;\
+		then docker rmi $(shell docker images -f "reference=identity-and-access-mangement-*" -q);\
 	fi
